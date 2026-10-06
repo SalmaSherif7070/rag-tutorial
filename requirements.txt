@@ -1,0 +1,18 @@
+# Core RAG stack
+qdrant-client>=1.9.0        # talks to the Qdrant vector database (our Docker container)
+datasets>=2.19.0            # downloads the RAGBench dataset from Hugging Face
+requests>=2.31.0            # calls the Jina Cloud embeddings API over HTTP
+
+# Orchestration + LLM
+langgraph>=0.2.0            # builds the router -> workers -> synthesizer graph
+langchain-core>=0.3.0       # message types used by the graph nodes
+langchain-google-genai>=2.0.0  # Gemini LLM used to answer questions
+
+# Web API + Swagger UI
+fastapi>=0.110.0           # REST API; auto-generates Swagger UI at /docs
+uvicorn[standard]>=0.29.0  # the ASGI server that runs FastAPI
+
+# Config + validation
+pydantic>=2.6.0
+pydantic-settings>=2.2.0   # loads settings from the .env file
+python-dotenv>=1.0.0

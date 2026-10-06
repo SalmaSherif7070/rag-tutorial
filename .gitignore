@@ -1,0 +1,15 @@
+# Secrets
+.env
+
+# Qdrant data written by the Docker container
+qdrant_storage/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Hugging Face dataset cache (optional)
+.cache/

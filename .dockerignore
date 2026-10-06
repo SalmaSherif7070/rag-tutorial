@@ -1,0 +1,16 @@
+# Never bake secrets or local data into the image.
+.env
+qdrant_storage/
+
+# Python junk
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Repo noise
+.git/
+.gitignore
+README.md
+.cache/

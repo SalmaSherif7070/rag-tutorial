@@ -1,0 +1,34 @@
+# Runs the whole project in containers:
+#   - qdrant : the vector database
+#   - api    : our FastAPI app (with Swagger UI)
+#
+#   Build & start:  docker compose up -d --build
+#   Logs:           docker compose logs -f api
+#   Stop:           docker compose down
+#
+#   Swagger UI:      http://localhost:8000/docs
+#   Qdrant dashboard http://localhost:6333/dashboard
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: rag-qdrant
+    ports:
+      - "6333:6333"   # REST + gRPC HTTP API
+      - "6334:6334"   # gRPC
+    volumes:
+      - ./qdrant_storage:/qdrant/storage   # vectors survive restarts
+    restart: unless-stopped
+
+  api:
+    build: .
+    container_name: rag-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env            # your JINA_API_KEY and GOOGLE_API_KEY
+    environment:
+      # Inside the Docker network, Qdrant is reached by service name, not localhost.
+      - QDRANT_URL=http://qdrant:6333
+    depends_on:
+      - qdrant
+    restart: unless-stopped
