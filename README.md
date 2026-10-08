@@ -99,14 +99,10 @@ rag/
 ├── schemas.py        # data shapes (Pydantic) + the graph State
 ├── embeddings.py     # STEP: text -> vector, using the Jina Cloud API
 ├── vector_store.py   # STEP: store & search vectors in Qdrant
-├── data_loader.py    # download RAGBench from Hugging Face
-├── ingest.py         # INDEXING pipeline: load -> embed -> store
+├── ingest.py         # load RAGBench from Hugging Face + INDEX it (load -> embed -> store)
 ├── retrieval.py      # SEARCH step: embed question -> find passages
-├── llm.py            # the Gemini model (generation)
-├── dependencies.py   # builds & wires all the pieces together
-├── graph/
-│   ├── nodes.py      # orchestrator / worker / synthesizer
-│   └── builder.py    # connects the nodes into a runnable graph
+├── dependencies.py   # builds the embedder, vector store & Gemini LLM in one place
+├── graph.py          # the orchestrator: router -> worker(s) -> synthesizer
 ├── api.py            # FastAPI web service (gives us Swagger UI)
 └── cli.py            # run it from the terminal
 ```
@@ -158,22 +154,27 @@ Now open the interactive API docs — this *is* Swagger UI:
 From that page you can click any endpoint, hit **"Try it out"**, and run it in the
 browser — no curl needed. Do it in this order:
 
-1. **`POST /ingest`** → click *Try it out* → `Execute`. Body (edit as you like):
-   ```json
-   { "max_rows": 50 }
-   ```
-   This downloads the data, embeds it with Jina, and stores it in Qdrant.
+1. **`POST /ingest`** → click *Try it out* → `Execute`. With an **empty body `{}`**
+   it ingests the **full data for all 4 domains**. To go faster while learning,
+   set a limit instead: `{ "max_rows": 50 }`. This downloads the data, embeds it
+   with Jina, and stores it in Qdrant.
 2. **`POST /ask`** → *Try it out* → set the body and `Execute`:
    ```json
    { "question": "What are the symptoms of COVID-19?" }
    ```
 
-You'll get back the answer plus the source passages. Prefer the terminal? Same
-endpoints work with curl:
+You'll get back the answer plus the source passages.
+
+To clear the knowledge base, use the delete endpoints:
+- **`DELETE /collections`** → wipes all 4 domains.
+- **`DELETE /collections/{domain}`** → wipes just one.
+
+Prefer the terminal? The same endpoints work with curl:
 
 ```powershell
-curl.exe -X POST http://localhost:8000/ingest -H "Content-Type: application/json" -d "{\"max_rows\":50}"
-curl.exe -X POST http://localhost:8000/ask    -H "Content-Type: application/json" -d "{\"question\":\"What is an indemnification clause?\"}"
+curl.exe -X POST   http://localhost:8000/ingest -H "Content-Type: application/json" -d "{}"
+curl.exe -X POST   http://localhost:8000/ask    -H "Content-Type: application/json" -d "{\"question\":\"What is an indemnification clause?\"}"
+curl.exe -X DELETE http://localhost:8000/collections
 ```
 
 Useful URLs while it's running:
@@ -195,9 +196,11 @@ Run only the database in Docker, and the Python app on your machine:
 docker compose up -d qdrant          # just the database
 pip install -r requirements.txt
 
-python -m rag.cli ingest --max-rows 50
+python -m rag.cli ingest                 # all 4 domains, full data
+python -m rag.cli ingest --max-rows 50   # faster while learning
 python -m rag.cli ask "What are the symptoms of COVID-19?"
 python -m rag.cli demo --domain tech
+python -m rag.cli delete                 # wipe all; or: --domain health
 ```
 
 Example output:

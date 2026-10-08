@@ -16,11 +16,10 @@ from __future__ import annotations
 
 import argparse
 
-from rag.data_loader import load_demo_questions
 from rag.dependencies import build_dependencies
 from rag.domains import DOMAIN_CONFIGS, Domain
-from rag.graph.builder import build_rag_graph
-from rag.ingest import ingest_all, ingest_domain
+from rag.graph import build_rag_graph
+from rag.ingest import ingest_all, ingest_domain, load_demo_questions
 
 
 def cmd_ingest(args: argparse.Namespace) -> None:
@@ -54,6 +53,18 @@ def cmd_ask(args: argparse.Namespace) -> None:
         print(f"- [{src.domain}] (score {src.score:.3f}) {snippet}...")
 
 
+def cmd_delete(args: argparse.Namespace) -> None:
+    deps = build_dependencies()
+    if args.domain:
+        cfg = DOMAIN_CONFIGS[Domain(args.domain)]
+        existed = deps.store.delete_collection(cfg.collection)
+        print(f"  {args.domain}: {'deleted' if existed else 'nothing to delete'}")
+    else:
+        for domain, cfg in DOMAIN_CONFIGS.items():
+            existed = deps.store.delete_collection(cfg.collection)
+            print(f"  {domain.value}: {'deleted' if existed else 'nothing to delete'}")
+
+
 def cmd_demo(args: argparse.Namespace) -> None:
     cfg = DOMAIN_CONFIGS[Domain(args.domain)]
     print(f"Demo questions from '{args.domain}' ({cfg.subset}):\n")
@@ -77,6 +88,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_ask = subparsers.add_parser("ask", help="Ask a question against the knowledge base.")
     p_ask.add_argument("question", help="Your question, in quotes.")
     p_ask.set_defaults(func=cmd_ask)
+
+    p_delete = subparsers.add_parser("delete", help="Delete stored vectors (a domain, or all).")
+    p_delete.add_argument("--domain", choices=domain_choices, help="Only delete this domain. Omit to delete all.")
+    p_delete.set_defaults(func=cmd_delete)
 
     p_demo = subparsers.add_parser("demo", help="Print sample questions from a domain.")
     p_demo.add_argument("--domain", choices=domain_choices, default="health")

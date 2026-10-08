@@ -55,3 +55,16 @@ class VectorStore:
             with_payload=True,
         )
         return result.points
+
+    def delete_collection(self, name: str) -> bool:
+        """Delete a collection. Returns True if it existed, False if it didn't."""
+        if self.client.collection_exists(name):
+            self.client.delete_collection(name)
+            return True
+        return False
+
+    def count(self, name: str) -> int:
+        """How many points a collection holds (0 if it doesn't exist)."""
+        if not self.client.collection_exists(name):
+            return 0
+        return self.client.count(collection_name=name, exact=True).count

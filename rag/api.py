@@ -21,11 +21,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
-from rag.data_loader import load_demo_questions
 from rag.dependencies import Dependencies, build_dependencies
 from rag.domains import DOMAIN_CONFIGS, Domain
-from rag.graph.builder import build_rag_graph
-from rag.ingest import ingest_all, ingest_domain
+from rag.graph import build_rag_graph
+from rag.ingest import ingest_all, ingest_domain, load_demo_questions
 
 app = FastAPI(
     title="Beginner RAG Tutorial API",
@@ -71,16 +70,23 @@ class AskResponse(BaseModel):
 
 class IngestRequest(BaseModel):
     domain: Optional[Domain] = Field(
-        default=None, description="Index only this domain. Omit to index all 4."
+        default=None, description="Index only this domain. Omit (null) to index ALL 4 domains."
     )
     split: str = Field(default="test", description="Dataset split to load.")
     max_rows: Optional[int] = Field(
-        default=50, description="Rows per domain. Keep small while learning; null = all."
+        default=None,
+        description="Rows per domain. null (default) = ALL rows. Set a number to limit while learning.",
     )
 
 
 class IngestResponse(BaseModel):
     counts: Dict[str, int] = Field(..., description="Passages stored per domain.")
+
+
+class DeleteResponse(BaseModel):
+    deleted: Dict[str, bool] = Field(
+        ..., description="Per collection: true if it existed and was deleted, false if it wasn't there."
+    )
 
 
 # --- Endpoints ---------------------------------------------------------------
@@ -108,7 +114,11 @@ def domains():
 
 @app.post("/ingest", response_model=IngestResponse, tags=["rag"])
 def ingest(req: IngestRequest):
-    """Build the knowledge base: download -> embed (Jina) -> store (Qdrant)."""
+    """Build the knowledge base: download -> embed (Jina) -> store (Qdrant).
+
+    With an empty body `{}` this ingests the FULL data for all 4 domains.
+    Re-ingesting a domain replaces its collection (it's wiped and rebuilt).
+    """
     deps = get_deps()
     try:
         if req.domain is not None:
@@ -149,3 +159,29 @@ def demo(domain: Domain, n: int = 5):
         "subset": cfg.subset,
         "questions": load_demo_questions(cfg.subset, max_rows=n),
     }
+
+
+@app.delete("/collections", response_model=DeleteResponse, tags=["rag"])
+def delete_all_collections():
+    """Delete the stored vectors for ALL 4 domains (wipes the knowledge base)."""
+    deps = get_deps()
+    try:
+        deleted = {
+            d.value: deps.store.delete_collection(cfg.collection)
+            for d, cfg in DOMAIN_CONFIGS.items()
+        }
+        return DeleteResponse(deleted=deleted)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Delete failed: {exc}") from exc
+
+
+@app.delete("/collections/{domain}", response_model=DeleteResponse, tags=["rag"])
+def delete_collection(domain: Domain):
+    """Delete the stored vectors for ONE domain."""
+    deps = get_deps()
+    cfg = DOMAIN_CONFIGS[domain]
+    try:
+        deleted = deps.store.delete_collection(cfg.collection)
+        return DeleteResponse(deleted={domain.value: deleted})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Delete failed: {exc}") from exc

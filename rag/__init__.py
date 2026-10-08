@@ -7,13 +7,12 @@ Read the files in this order to understand the whole system:
     schemas.py       -> the data shapes (Pydantic models + the graph State)
     embeddings.py    -> turn text into vectors with the Jina Cloud API
     vector_store.py  -> store & search those vectors in Qdrant
-    data_loader.py   -> download the RAGBench dataset from Hugging Face
-    ingest.py        -> the "index" pipeline: load -> embed -> store
+    ingest.py        -> load the data from Hugging Face + index it (load -> embed -> store)
     retrieval.py     -> the "search" step: embed a question -> find passages
-    llm.py           -> the Gemini model that writes the answers
-    dependencies.py  -> wires the pieces above into one object
-    graph/           -> the orchestrator: router -> workers -> synthesizer
-    cli.py           -> run it:  python -m rag.cli ingest / ask
+    dependencies.py  -> builds the embedder, vector store and Gemini LLM in one place
+    graph.py         -> the orchestrator: router -> workers -> synthesizer
+    api.py           -> FastAPI web service (Swagger UI at /docs)
+    cli.py           -> run it:  python -m rag.cli ingest / ask / delete
 """
 
 __version__ = "0.1.0"
